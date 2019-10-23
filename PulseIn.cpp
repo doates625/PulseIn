@@ -18,15 +18,11 @@ PulseIn::PulseIn(Platform::pin_t pin, PinMode mode) :
 /**
  * @brief Reads pulse length from digital input
  * @param value Value of pulse to read (1 = high, 0 = low)
- * @param timeout Waiting timeout (seconds)
+ * @param timeout Pulse start wait timeout (seconds)
  * 
- * If the input already reads as value at the start of the method call, this
- * method will wait until it changes in order to read a full pulse. The timeout
- * is applied to waiting for the pulse to begin, then reset and applied again to
- * waiting for the pulse to end.
- * 
- * The Arduino implementation of this method uses the pulseIn function, which is
- * rated to pulses of 10us to 3min (see References).
+ * If the input already reads the value at the start of the method call, this
+ * method will wait at most timeout until a new pulse begins. If no pulse
+ * begins within the timeout, this method returns 0.
  */
 float PulseIn::read_pulse(int value, float timeout)
 {
@@ -43,6 +39,13 @@ float PulseIn::read_pulse(int value, float timeout)
 	
 	// Wait for end of last pulse
 	timer.start();
+	while (read() == value)
+	{
+		if (timer.read() > timeout)
+		{
+			return 0.0f;
+		}
+	}
 	while (read() != value)
 	{
 		if (timer.read() > timeout)
@@ -53,17 +56,8 @@ float PulseIn::read_pulse(int value, float timeout)
 	
 	// Measure time of pulse
 	timer.reset();
-	while (read() == value)
-	{
-		if (timer.read() > timeout)
-		{
-			return 0.0f;
-		}
-	}
-	float time = timer.read();
-
-	// Return length
-	return time;
+	while (read() == value);
+	return timer.read();
 
 #endif
 }
